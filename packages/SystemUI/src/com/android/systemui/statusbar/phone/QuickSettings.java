@@ -69,13 +69,19 @@ import android.util.Pair;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.View.OnLongClickListener;
 import android.view.Window;
 import android.view.WindowManager;
 import android.view.WindowManagerGlobal;
 import android.widget.ImageView;
 import android.widget.TextView;
+import android.net.wifi.WifiManager;
+import android.net.ConnectivityManager;
+import android.location.LocationManager;
+import android.content.ContentResolver;
 
 import java.util.ArrayList;
+
 
 
 /**
@@ -397,7 +403,16 @@ class QuickSettings {
         wifiTile.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+                //startSettingsActivity(android.provider.Settings.ACTION_WIFI_SETTINGS);
+                WifiManager wifi = (WifiManager) mContext.getSystemService(Context.WIFI_SERVICE);
+                wifi.setWifiEnabled(!wifi.isWifiEnabled());
+            }
+       });
+       wifiTile.setOnLongClickListener(new View.OnLongClickListener() {
+            @Override
+            public boolean onLongClick(View v) {
                 startSettingsActivity(android.provider.Settings.ACTION_WIFI_SETTINGS);
+                return true;
             }
         });
         mModel.addWifiTile(wifiTile, new QuickSettingsModel.RefreshCallback() {
@@ -423,13 +438,23 @@ class QuickSettings {
             rssiTile.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
+                    ConnectivityManager data = (ConnectivityManager) mContext.getSystemService(Context.CONNECTIVITY_SERVICE);
+                    data.setMobileDataEnabled(!data.getMobileDataEnabled());
+                }
+            });
+            rssiTile.setOnLongClickListener(new View.OnLongClickListener() {
+                @Override
+                public boolean onLongClick(View v) {
                     Intent intent = new Intent();
                     intent.setComponent(new ComponentName(
                             "com.android.settings",
                             "com.android.settings.Settings$DataUsageSummaryActivity"));
                     startSettingsActivity(intent);
+                    return true;
                 }
             });
+
+
             mModel.addRSSITile(rssiTile, new QuickSettingsModel.RefreshCallback() {
                 @Override
                 public void refreshView(QuickSettingsTileView view, State state) {
@@ -544,7 +569,19 @@ class QuickSettings {
             bluetoothTile.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
+                    BluetoothAdapter ba = BluetoothAdapter.getDefaultAdapter();
+                    if (ba.isEnabled()) {
+                        ba.disable();
+                    } else {
+                        ba.enable();
+                    }
+                }
+            });
+            bluetoothTile.setOnLongClickListener(new View.OnLongClickListener() {
+                @Override
+                public boolean onLongClick(View v) {
                     startSettingsActivity(android.provider.Settings.ACTION_BLUETOOTH_SETTINGS);
+                    return true;
                 }
             });
             mModel.addBluetoothTile(bluetoothTile, new QuickSettingsModel.RefreshCallback() {
