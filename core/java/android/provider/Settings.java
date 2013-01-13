@@ -2266,6 +2266,12 @@ public final class Settings {
         public static final String VOLBTN_MUSIC_CONTROLS = "pab_volbtn_music_controls";
 
         /**
+         * Non-Zero if we fiddle with the hardware keys in a non-standard way
+         * @hide
+         */
+        public static final String HWBUTTON_PROFILE = "pab_hwbutton_profile";
+
+        /**
          * Settings to backup. This is here so that it's in the same place as the settings
          * keys and easy to update.
          *

@@ -444,6 +444,9 @@ public class PhoneWindowManager implements WindowManagerPolicy {
     boolean mVolBtnMusicControls;
     boolean mIsLongPress;
 
+    // True if hw-button functions are swapped
+    int mHwButtonProfile = 0;
+
     // Behavior of ENDCALL Button.  (See Settings.System.END_BUTTON_BEHAVIOR.)
     int mEndcallBehavior;
 
@@ -537,6 +540,9 @@ public class PhoneWindowManager implements WindowManagerPolicy {
                     UserHandle.USER_ALL);
             resolver.registerContentObserver(Settings.System.getUriFor(
                     Settings.System.VOLBTN_MUSIC_CONTROLS), false, this,
+                    UserHandle.USER_ALL);
+            resolver.registerContentObserver(Settings.System.getUriFor(
+                    Settings.System.HWBUTTON_PROFILE), false, this,
                     UserHandle.USER_ALL);
             resolver.registerContentObserver(Settings.System.getUriFor(
                     Settings.System.ACCELEROMETER_ROTATION), false, this,
@@ -773,6 +779,17 @@ public class PhoneWindowManager implements WindowManagerPolicy {
     boolean isDeviceProvisioned() {
         return Settings.Global.getInt(
                 mContext.getContentResolver(), Settings.Global.DEVICE_PROVISIONED, 0) != 0;
+    }
+
+    private void handleCustomHwLongpress(int key) {
+        if(key == KeyEvent.KEYCODE_MENU) {
+            boolean oldval = mHomeLongPressed;
+            handleLongPressOnHome();
+            mHomeLongPressed = oldval; // reset value set by called function
+        } else if(key == KeyEvent.KEYCODE_HOME) {
+            performHapticFeedbackLw(null, HapticFeedbackConstants.LONG_PRESS, false);
+            launchAssistAction();
+        }
     }
 
     private void handleLongPressOnHome() {
@@ -1086,6 +1103,9 @@ public class PhoneWindowManager implements WindowManagerPolicy {
             mVolBtnMusicControls = (Settings.System.getIntForUser(resolver,
                     Settings.System.VOLBTN_MUSIC_CONTROLS,
                     0, UserHandle.USER_CURRENT) == 1);
+            mHwButtonProfile = Settings.System.getIntForUser(resolver,
+                    Settings.System.HWBUTTON_PROFILE,
+                    0, UserHandle.USER_CURRENT);
 
             // Configure rotation lock.
             int userRotation = Settings.System.getIntForUser(resolver,
@@ -1920,7 +1940,12 @@ public class PhoneWindowManager implements WindowManagerPolicy {
                     mHomePressed = true;
                 } else if ((event.getFlags() & KeyEvent.FLAG_LONG_PRESS) != 0) {
                     if (!keyguardOn) {
-                        handleLongPressOnHome();
+                        if(mHwButtonProfile > 0) {
+                            handleCustomHwLongpress(keyCode);
+                            mHomeLongPressed = true; /* else would set this */
+                        } else {
+                            handleLongPressOnHome();
+                        }
                     }
                 }
             }
@@ -1928,6 +1953,11 @@ public class PhoneWindowManager implements WindowManagerPolicy {
         } else if (keyCode == KeyEvent.KEYCODE_MENU) {
             // Hijack modified menu keys for debugging features
             final int chordBug = KeyEvent.META_SHIFT_ON;
+
+            if (mHwButtonProfile > 0 && down && !keyguardOn && (event.getFlags() & KeyEvent.FLAG_LONG_PRESS) != 0) {
+                handleCustomHwLongpress(keyCode);
+                return -1;
+            }
 
             if (down && repeatCount == 0) {
                 if (mEnableShiftMenuBugReports && (metaState & chordBug) == chordBug) {
