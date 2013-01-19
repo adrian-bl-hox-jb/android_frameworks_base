@@ -2272,6 +2272,12 @@ public final class Settings {
         public static final String HWBUTTON_PROFILE = "pab_hwbutton_profile";
 
         /**
+         * Enforce overflow (3 dot) button
+         * @hide
+         */
+        public static final String UI_FORCE_OVERFLOW_BUTTON = "pab_force_overflow_button";
+
+        /**
          * Settings to backup. This is here so that it's in the same place as the settings
          * keys and easy to update.
          *

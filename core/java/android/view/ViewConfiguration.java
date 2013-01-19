@@ -223,6 +223,8 @@ public class ViewConfiguration {
     private boolean sHasPermanentMenuKey;
     private boolean sHasPermanentMenuKeySet;
 
+    private Context mContext;
+
     static final SparseArray<ViewConfiguration> sConfigurations =
             new SparseArray<ViewConfiguration>(2);
 
@@ -270,6 +272,8 @@ public class ViewConfiguration {
             sizeAndDensity = density;
         }
 
+        mContext = context;
+
         mEdgeSlop = (int) (sizeAndDensity * EDGE_SLOP + 0.5f);
         mFadingEdgeLength = (int) (sizeAndDensity * FADING_EDGE_LENGTH + 0.5f);
         mMinimumFlingVelocity = (int) (density * MINIMUM_FLING_VELOCITY + 0.5f);
@@ -287,16 +291,6 @@ public class ViewConfiguration {
 
         mOverscrollDistance = (int) (sizeAndDensity * OVERSCROLL_DISTANCE + 0.5f);
         mOverflingDistance = (int) (sizeAndDensity * OVERFLING_DISTANCE + 0.5f);
-
-        if (!sHasPermanentMenuKeySet) {
-            IWindowManager wm = WindowManagerGlobal.getWindowManagerService();
-            try {
-                sHasPermanentMenuKey = !wm.hasSystemNavBar() && !wm.hasNavigationBar();
-                sHasPermanentMenuKeySet = true;
-            } catch (RemoteException ex) {
-                sHasPermanentMenuKey = false;
-            }
-        }
 
         mFadingMarqueeEnabled = res.getBoolean(
                 com.android.internal.R.bool.config_ui_enableFadingMarquee);
@@ -678,6 +672,12 @@ public class ViewConfiguration {
      * @return true if a permanent menu key is present, false otherwise.
      */
     public boolean hasPermanentMenuKey() {
+        if (!sHasPermanentMenuKeySet) {
+            int oflow = Settings.System.getInt( mContext.getContentResolver(),
+                Settings.System.UI_FORCE_OVERFLOW_BUTTON, 0);
+            sHasPermanentMenuKey = ( oflow == 0 ? true : false );
+            sHasPermanentMenuKeySet = true;
+        }
         return sHasPermanentMenuKey;
     }
 
