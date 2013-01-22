@@ -38,6 +38,7 @@ import android.database.ContentObserver;
 import android.graphics.PixelFormat;
 import android.graphics.Rect;
 import android.media.AudioManager;
+import android.hardware.input.InputManager;
 import android.media.IAudioService;
 import android.media.Ringtone;
 import android.media.RingtoneManager;
@@ -446,7 +447,8 @@ public class PhoneWindowManager implements WindowManagerPolicy {
 
     // True if hw-button functions are swapped
     int mHwButtonProfile = 0;
-
+    boolean mHwButtonVirtualPending = false;
+    boolean mHwButtonIgnoreNextKeyUp = false;
     // Behavior of ENDCALL Button.  (See Settings.System.END_BUTTON_BEHAVIOR.)
     int mEndcallBehavior;
 
@@ -787,9 +789,29 @@ public class PhoneWindowManager implements WindowManagerPolicy {
             handleLongPressOnHome();
             mHomeLongPressed = oldval; // reset value set by called function
         } else if(key == KeyEvent.KEYCODE_HOME) {
-            performHapticFeedbackLw(null, HapticFeedbackConstants.LONG_PRESS, false);
             launchAssistAction();
         }
+    }
+
+    private boolean profileFlipsLongpress() {
+        return (mHwButtonProfile == 2 ? true : false );
+    }
+
+    private void fireVirtualMenuKey() {
+        new Thread(new Runnable() {
+            public void run() {
+                mHwButtonVirtualPending = true;
+                InputManager im = InputManager.getInstance();
+                long now = SystemClock.uptimeMillis();
+                final KeyEvent downEvent = new KeyEvent(now, now, KeyEvent.ACTION_DOWN,KeyEvent.KEYCODE_MENU,
+                  0, 0, KeyCharacterMap.VIRTUAL_KEYBOARD, 0,
+                  KeyEvent.FLAG_FROM_SYSTEM, InputDevice.SOURCE_KEYBOARD);
+                final KeyEvent upEvent = KeyEvent.changeAction(downEvent, KeyEvent.ACTION_UP);
+                im.injectInputEvent(downEvent, InputManager.INJECT_INPUT_EVENT_MODE_WAIT_FOR_RESULT);
+                im.injectInputEvent(upEvent, InputManager.INJECT_INPUT_EVENT_MODE_WAIT_FOR_RESULT);
+                mHwButtonVirtualPending = false;
+            }
+        }).start();
     }
 
     private void handleLongPressOnHome() {
@@ -804,7 +826,9 @@ public class PhoneWindowManager implements WindowManagerPolicy {
         }
 
         if (mLongPressOnHomeBehavior != LONG_PRESS_HOME_NOTHING) {
-            performHapticFeedbackLw(null, HapticFeedbackConstants.LONG_PRESS, false);
+            if(mHwButtonProfile == 0) {
+                performHapticFeedbackLw(null, HapticFeedbackConstants.LONG_PRESS, false);
+            }
             sendCloseSystemWindows(SYSTEM_DIALOG_REASON_RECENT_APPS);
 
             // Eat the longpress so it won't dismiss the recent apps dialog when
@@ -1941,6 +1965,7 @@ public class PhoneWindowManager implements WindowManagerPolicy {
                 } else if ((event.getFlags() & KeyEvent.FLAG_LONG_PRESS) != 0) {
                     if (!keyguardOn) {
                         if(mHwButtonProfile > 0) {
+                            performHapticFeedbackLw(null, HapticFeedbackConstants.LONG_PRESS, false);
                             handleCustomHwLongpress(keyCode);
                             mHomeLongPressed = true; /* else would set this */
                         } else {
@@ -1953,10 +1978,33 @@ public class PhoneWindowManager implements WindowManagerPolicy {
         } else if (keyCode == KeyEvent.KEYCODE_MENU) {
             // Hijack modified menu keys for debugging features
             final int chordBug = KeyEvent.META_SHIFT_ON;
+            boolean assumeLongPress = ((event.getFlags() & KeyEvent.FLAG_LONG_PRESS) != 0);
 
-            if (mHwButtonProfile > 0 && down && !keyguardOn && (event.getFlags() & KeyEvent.FLAG_LONG_PRESS) != 0) {
-                handleCustomHwLongpress(keyCode);
-                return -1;
+            if(mHwButtonProfile > 0 && !keyguardOn && !mHwButtonVirtualPending) {
+
+                if(!down && mHwButtonIgnoreNextKeyUp) {
+                    /* we were asked to ignore this key up event */
+                    mHwButtonIgnoreNextKeyUp = false;
+                    return -1;
+                }
+
+                if(!down && repeatCount == 0 && profileFlipsLongpress()) {
+                    /* short press, but profiles switches long<->shortpress events */
+                    handleCustomHwLongpress(keyCode);
+                    return -1;
+                }
+
+                if(down && assumeLongPress) {
+                    /* long press event */
+                    mHwButtonIgnoreNextKeyUp = true;
+                    performHapticFeedbackLw(null, HapticFeedbackConstants.LONG_PRESS, false);
+                    if(profileFlipsLongpress()) {
+                        fireVirtualMenuKey(); /* menu wants profile on shortpress */
+                    } else {
+                        handleCustomHwLongpress(keyCode);
+                    }
+                    return -1;
+                }
             }
 
             if (down && repeatCount == 0) {
