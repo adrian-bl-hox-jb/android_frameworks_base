@@ -2293,6 +2293,10 @@ public final class Settings {
         public static final String UI_FORCE_OVERFLOW_BUTTON = "pab_force_overflow_button";
 
         /**
+         * Cap button backlight at this value
+         */
+        public static final String CAP_BUTTON_BACKLIGHT = "pab_cap_button_backlight";
+        /**
          * Settings to backup. This is here so that it's in the same place as the settings
          * keys and easy to update.
          *

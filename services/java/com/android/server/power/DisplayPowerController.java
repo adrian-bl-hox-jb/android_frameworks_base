@@ -40,7 +40,6 @@ import android.util.FloatMath;
 import android.util.Slog;
 import android.util.Spline;
 import android.util.TimeUtils;
-
 import java.io.PrintWriter;
 
 /**
@@ -341,7 +340,7 @@ final class DisplayPowerController {
     private boolean mTwilightChanged;
 
     private final LightsService.Light mButtonlight;
-    
+    private int mButtonCap;
     /**
      * Creates the display power controller.
      */
@@ -453,6 +452,14 @@ final class DisplayPowerController {
      */
     public boolean isProximitySensorAvailable() {
         return mProximitySensor != null;
+    }
+
+    /**
+     * Change button backlight cap-value
+     */
+    public void setButtonBacklightCap(int cap) {
+        mButtonCap = cap;
+        sendUpdatePowerStateLocked();
     }
 
     /**
@@ -726,7 +733,11 @@ final class DisplayPowerController {
 
         /* button light */
         boolean buttonlight_on = wantScreenOn(mPowerRequest.screenState) && (mPowerRequest.screenState != DisplayPowerRequest.SCREEN_STATE_DIM); 
-       
+        int curBrightness = (mUsingScreenAutoBrightness ? mScreenAutoBrightness : mPowerRequest.screenBrightness);
+
+        if(buttonlight_on && (curBrightness > Math.abs(mButtonCap) || mButtonCap < 0 && curBrightness <= 25 ) ) {
+            buttonlight_on = false;
+        }
         mButtonlight.setBrightness(buttonlight_on ? 1 : 0);
 
         // Report whether the display is ready for use.

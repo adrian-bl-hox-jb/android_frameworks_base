@@ -486,7 +486,9 @@ public final class PowerManagerService extends IPowerManager.Stub
             resolver.registerContentObserver(Settings.System.getUriFor(
                     Settings.System.SCREEN_BRIGHTNESS_MODE),
                     false, mSettingsObserver, UserHandle.USER_ALL);
-
+            resolver.registerContentObserver(Settings.System.getUriFor(
+                    Settings.System.CAP_BUTTON_BACKLIGHT),
+                    false, mSettingsObserver, UserHandle.USER_ALL);
             // Go.
             readConfigurationLocked();
             updateSettingsLocked();
@@ -551,6 +553,11 @@ public final class PowerManagerService extends IPowerManager.Stub
         mScreenBrightnessModeSetting = Settings.System.getIntForUser(resolver,
                 Settings.System.SCREEN_BRIGHTNESS_MODE,
                 Settings.System.SCREEN_BRIGHTNESS_MODE_MANUAL, UserHandle.USER_CURRENT);
+
+        int newCap = Settings.System.getIntForUser(resolver,
+                Settings.System.CAP_BUTTON_BACKLIGHT,
+                0xFF, UserHandle.USER_CURRENT); /* 255 is our default */
+        mDisplayPowerController.setButtonBacklightCap(newCap);
 
         mDirty |= DIRTY_SETTINGS;
     }
